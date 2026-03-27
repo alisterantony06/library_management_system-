@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Library Management System</title>
+
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(to right, #f1f8ff, #e3f2fd);
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: #0d47a1;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    label {
+      font-weight: 600;
+      display: block;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .full {
+      grid-column: span 2;
+    }
+
+    button {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .primary { background: #1976d2; color: white; }
+    .edit { background: #ffa000; color: white; }
+    .delete { background: #d32f2f; color: white; }
+    .return { background: #388e3c; color: white; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .badge {
+      padding: 5px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .issued { background: #ffebee; color: #c62828; }
+    .available { background: #e8f5e9; color: #2e7d32; }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>📚 Library Management System</h1>
+
+<div class="card">
+  <h2>📖 Issue Book</h2>
+
+  <div class="form-grid">
+    <div>
+      <label>Book Title</label>
+      <input id="title">
+    </div>
+
+    <div>
+      <label>Author</label>
+      <input id="author">
+    </div>
+
+    <div>
+      <label>Student Name</label>
+      <input id="student">
+    </div>
+
+    <div>
+      <label>Issue Date</label>
+      <input type="date" id="issueDate">
+    </div>
+
+    <div>
+      <label>Return Date</label>
+      <input type="date" id="returnDate">
+    </div>
+
+    <div class="full">
+      <button class="primary" onclick="addBook()">➕ Issue Book</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>📚 Books in Library</h2>
+
+  <button onclick="loadAllBooks()">All</button>
+  <button onclick="loadAvailableBooks()">Available</button>
+  <button onclick="loadIssuedBooks()">Issued</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Author</th>
+        <th>Student</th>
+        <th>Issue</th>
+        <th>Return</th>
+        <th>Status</th>
+        <th>Fine ₹</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="bookTable"></tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+const bookTable = document.getElementById("bookTable");
+
+function formatDate(d) {
+  if (!d) return "-";
+  return new Date(d).toLocaleDateString("en-IN");
+}
+
+function renderBooks(data) {
+  bookTable.innerHTML = "";
+
+  data.forEach(book => {
+    bookTable.innerHTML += `
+      <tr>
+        <td>${book.title}</td>
+        <td>${book.author}</td>
+        <td>${book.student_name || "-"}</td>
+        <td>${formatDate(book.issue_date)}</td>
+        <td>${formatDate(book.return_date)}</td>
+        <td>
+          <span class="badge ${book.status === "Issued" ? "issued" : "available"}">
+            ${book.status}
+          </span>
+        </td>
+        <td>${book.fine}</td>
+        <td>
+          <button class="edit" onclick="updateBook(${book.id})">Edit</button>
+          <button class="delete" onclick="deleteBook(${book.id})">Delete</button>
+          ${book.status === "Issued"
+            ? `<button class="return" onclick="returnBook(${book.id})">Return</button>`
+            : ""}
+        </td>
+      </tr>`;
+  });
+}
+
+function loadAllBooks() {
+  fetch("http://localhost:3000/books")
+    .then(res => res.json())
+    .then(renderBooks);
+}
+
+function loadAvailableBooks() {
+  fetch("http://localhost:3000/books/available")
+    .then(res => res.json())
+    .then(renderBooks);
+}
+
+function loadIssuedBooks() {
+  fetch("http://localhost:3000/books/issued")
+    .then(res => res.json())
+    .then(renderBooks);
+}
+
+function addBook() {
+  fetch("http://localhost:3000/add-book", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: title.value,
+      author: author.value,
+      student_name: student.value,
+      issue_date: issueDate.value,
+      return_date: returnDate.value
+    })
+  }).then(() => {
+    alert("✅ Book Issued");
+    title.value = author.value = student.value = "";
+    issueDate.value = returnDate.value = "";
+    loadAllBooks();
+  });
+}
+
+function deleteBook(id) {
+  fetch(`http://localhost:3000/delete-book/${id}`, { method: "DELETE" })
+    .then(loadAllBooks);
+}
+
+function updateBook(id) {
+  const t = prompt("New title");
+  const a = prompt("New author");
+  if (!t || !a) return;
+
+  fetch(`http://localhost:3000/update-book/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: t, author: a })
+  }).then(loadAllBooks);
+}
+
+function returnBook(id) {
+  fetch(`http://localhost:3000/return-book/${id}`, { method: "PUT" })
+    .then(loadAllBooks);
+}
+
+loadAllBooks();
+</script>
+
+</body>
+</html>
